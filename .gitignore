@@ -1,0 +1,37 @@
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Python cache & build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+
+# ComfyUI workspace data & heavy assets
+models/*
+!models/.gitkeep
+custom_nodes/*
+!custom_nodes/.gitkeep
+input/*
+!input/.gitkeep
+output/*
+!output/.gitkeep
+scratch/*
+!scratch/.gitkeep
+temp/
+user/
+
+# Checkpoints & logs
+.checkpoint_*.json
+*.log
+
+# OS / Editor files
+.DS_Store
+.vscode/
+.idea/
