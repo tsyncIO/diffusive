@@ -498,7 +498,8 @@ def main(
     audio_scale: float = 1.5,
     motion_frame: int = 9,
     steps: int = 4,
-    unload_models: bool | None = None
+    unload_models: bool | None = None,
+    dry_run: bool = False
 ):
     start_time = time.time()
     
@@ -513,6 +514,22 @@ def main(
 
     # Node imports
     from nodes import CLIPVisionLoader, NODE_CLASS_MAPPINGS
+
+    if dry_run:
+        print("[DRY-RUN] ComfyUI runtime bootstrap and custom nodes imported successfully.")
+        required_nodes = [
+            "WanVideoModelLoader",
+            "WanVideoSampler",
+            "MultiTalkModelLoader",
+            "WanVideoImageToVideoMultiTalk",
+            "VHS_VideoCombine",
+            "VHS_LoadVideo"
+        ]
+        status = {}
+        for node_name in required_nodes:
+            status[node_name] = node_name in NODE_CLASS_MAPPINGS
+        print(f"[DRY-RUN] Required node availability: {status}")
+        return status
 
     import torch
 
@@ -600,6 +617,7 @@ if __name__ == "__main__":
     parser.add_argument("--audio_scale", type=float, default=1.5, help="Strength of the audio guidance for expressions. Increase for more pronounced lip-sync and movements.")
     parser.add_argument("--motion_frame", type=int, default=9, help="Motion frame parameter. Can tweak for adjusting movement scale.")
     parser.add_argument("--steps", type=int, default=4, help="Number of sampling steps. Higher = better quality but slower.")
+    parser.add_argument("--dry-run", action="store_true", help="Validate runtime setup, paths, and node availability without loading models or executing inference.")
     
     args = parser.parse_args()
     
@@ -617,5 +635,6 @@ if __name__ == "__main__":
         seed=args.seed,
         audio_scale=args.audio_scale,
         motion_frame=args.motion_frame,
-        steps=args.steps
+        steps=args.steps,
+        dry_run=args.dry_run
     )
