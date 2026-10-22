@@ -7,10 +7,9 @@ from pathlib import Path
 from playwright.async_api import async_playwright
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_WORKFLOW_PATH = PROJECT_ROOT / "workflows" / "kiwiEdit.json"
-DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "scripts" / "void_api.py"
-SCRATCH_DIR = PROJECT_ROOT / "scratch"
-DEFAULT_COMFYUI_URL = os.environ.get("COMFYUI_URL", "http://127.0.0.1:8188")
+DEFAULT_WORKFLOW_PATH = PROJECT_ROOT / "workflows" / "qedit.json"
+DEFAULT_OUTPUT_PATH = PROJECT_ROOT / "scripts" / "inference_qedit.py"
+DEFAULT_COMFYUI_URL = os.environ.get("COMFYUI_URL", "http://127.0.0.1:8189")
 
 UV_RUNTIME_HEADER = '''def get_comfyui_path() -> str:
     """Return the configured ComfyUI workspace path, preferring COMFYUI_PATH when set."""
@@ -275,16 +274,11 @@ async def convert_workflow(
             workflow_data,
         )
 
-        SCRATCH_DIR.mkdir(parents=True, exist_ok=True)
-        api_out_path = SCRATCH_DIR / "api_prompt.json"
-        frontend_out_path = SCRATCH_DIR / "frontend_workflow.json"
-        print(f"Saving API prompt to: {api_out_path}")
-        with open(api_out_path, "w", encoding="utf-8") as f:
+        workflow_api_path = workflow_path.parent / f"{workflow_path.stem}_api.json"
+        workflow_api_path.parent.mkdir(parents=True, exist_ok=True)
+        print(f"Saving API prompt to: {workflow_api_path}")
+        with open(workflow_api_path, "w", encoding="utf-8") as f:
             json.dump(api_data["api_output"], f, indent=2, ensure_ascii=False)
-
-        print(f"Saving frontend workflow copy to: {frontend_out_path}")
-        with open(frontend_out_path, "w", encoding="utf-8") as f:
-            json.dump(api_data["frontend_workflow"], f, indent=2, ensure_ascii=False)
 
         print("Posting to /saveasscript to generate python script...")
         payload = json.dumps(
@@ -304,7 +298,7 @@ async def convert_workflow(
         if response.status != 200:
             text = await response.text()
             print(f"Conversion failed with status {response.status}: {text}")
-            print(f"API prompt saved to {api_out_path} — inspect which node is missing 'class_type'.")
+            print(f"API prompt saved to {workflow_api_path} — inspect which node is missing 'class_type'.")
             await browser.close()
             raise SystemExit(1)
 

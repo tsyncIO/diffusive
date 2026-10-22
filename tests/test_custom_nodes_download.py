@@ -22,10 +22,10 @@ def get_node_links():
 
 
 def test_custom_nodes_links_syntax():
-    """Verify all custom node links are valid GitHub git repositories."""
+    """Verify all custom node links are valid GitHub git repositories (with optional @ commit_sha)."""
     links = get_node_links()
     assert len(links) > 0, "No custom node links found in custom_nodes_links.txt"
-    github_pattern = re.compile(r"^https://github\.com/[^/]+/[^/]+(\.git)?$")
+    github_pattern = re.compile(r"^https://github\.com/[^/]+/[^/\s]+(\.git)?(\s*@\s*[0-9a-fA-F]{7,40})?$")
     for link in links:
         assert github_pattern.match(link), f"Invalid GitHub link format: {link}"
 

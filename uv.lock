@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = "==3.12.*"
 resolution-markers = [
     "platform_machine == 'x86_64' and sys_platform == 'linux'",
@@ -420,38 +420,9 @@ wheels = [
 ]
 
 [[package]]
-name = "comfy-video-edit"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "black" },
-    { name = "comfyui" },
-    { name = "numpy" },
-    { name = "opencv-contrib-python-headless" },
-    { name = "pillow" },
-    { name = "playwright" },
-    { name = "torch" },
-    { name = "torchvision" },
-    { name = "tqdm" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "black", specifier = ">=26.10.1" },
-    { name = "comfyui", specifier = "==0.41.0.1" },
-    { name = "numpy", specifier = ">=1.25.0,<2.3" },
-    { name = "opencv-contrib-python-headless", specifier = ">=4.12.0.88,<5" },
-    { name = "pillow" },
-    { name = "playwright", specifier = ">=1.64.0" },
-    { name = "torch", specifier = "==2.14.1+cu132", index = "https://download.pytorch.org/whl/cu132" },
-    { name = "torchvision", specifier = "==0.29.1+cu132", index = "https://download.pytorch.org/whl/cu132" },
-    { name = "tqdm" },
-]
-
-[[package]]
 name = "comfyui"
 version = "0.41.0.1"
-source = { registry = "https://nodes.appmana.com/simple/" }
+source = { editable = "packages/comfyui" }
 dependencies = [
     { name = "accelerate" },
     { name = "aio-pika" },
@@ -569,9 +540,124 @@ dependencies = [
     { name = "yarl" },
     { name = "yt-dlp" },
 ]
-sdist = { url = "https://github.com/hiddenswitch/pip-and-uv-installable-ComfyUI/releases/download/v0.41.0.1/comfyui-0.41.0.1.tar.gz" }
-wheels = [
-    { url = "https://github.com/hiddenswitch/pip-and-uv-installable-ComfyUI/releases/download/v0.41.0.1/comfyui-0.41.0.1-py3-none-any.whl" },
+
+[package.metadata]
+requires-dist = [
+    { name = "accelerate", specifier = ">=0.25.0" },
+    { name = "aio-pika", specifier = ">=7.2,<10" },
+    { name = "aiofiles", specifier = ">=23.1.0" },
+    { name = "aiohttp", specifier = ">=3.13.2" },
+    { name = "alembic" },
+    { name = "anthropic" },
+    { name = "av", specifier = ">=17.0.0" },
+    { name = "basedpyright" },
+    { name = "blake3" },
+    { name = "can-ada" },
+    { name = "certifi" },
+    { name = "clean-fid", specifier = ">=0.1.35" },
+    { name = "click" },
+    { name = "colour" },
+    { name = "comfy-aimdo", specifier = "==0.5.6" },
+    { name = "comfy-angle" },
+    { name = "comfy-kitchen", specifier = "==0.2.37" },
+    { name = "comfyui-embedded-docs", specifier = "==0.5.14" },
+    { name = "comfyui-frontend-package", specifier = "==1.55.17" },
+    { name = "comfyui-manager", specifier = ">=4.2.2,<5" },
+    { name = "comfyui-workflow-templates", specifier = "==0.11.86" },
+    { name = "configargparse", specifier = ">=1.7.1" },
+    { name = "cryptography" },
+    { name = "diffusers", specifier = ">=0.30.1" },
+    { name = "einops", specifier = ">=0.6.0" },
+    { name = "email-validator" },
+    { name = "filelock" },
+    { name = "frozendict", specifier = ">=2.3.6" },
+    { name = "fsspec" },
+    { name = "gguf" },
+    { name = "glfw" },
+    { name = "google-generativeai" },
+    { name = "huggingface-hub", extras = ["hf-xet"], specifier = ">=0.32.0" },
+    { name = "humanize" },
+    { name = "ijson" },
+    { name = "importlib-resources" },
+    { name = "jax" },
+    { name = "jaxtyping" },
+    { name = "joblib" },
+    { name = "jsonmerge", specifier = ">=1.9.0" },
+    { name = "kornia", specifier = ">=0.7.1" },
+    { name = "lazy-loader", specifier = ">=0.3" },
+    { name = "lazy-object-proxy" },
+    { name = "matrix-nio" },
+    { name = "ml-dtypes" },
+    { name = "mpmath", specifier = ">=1.1.0,<1.4" },
+    { name = "natsort" },
+    { name = "networkx", specifier = ">=2.6.3" },
+    { name = "numpy", specifier = ">=1.25.0,<2.3" },
+    { name = "open-clip-torch", specifier = ">=2.24.0" },
+    { name = "openai" },
+    { name = "opencv-contrib-python-headless", specifier = ">=4.12.0.88,<5" },
+    { name = "openexr" },
+    { name = "opentelemetry-distro", specifier = ">=0.50b0" },
+    { name = "opentelemetry-exporter-otlp", specifier = ">=1.29.0" },
+    { name = "opentelemetry-instrumentation", specifier = ">=0.50b0" },
+    { name = "opentelemetry-instrumentation-aio-pika", specifier = ">=0.50b0" },
+    { name = "opentelemetry-instrumentation-aiohttp-client", specifier = ">=0.50b0" },
+    { name = "opentelemetry-instrumentation-aiohttp-server", specifier = ">=0.50b0" },
+    { name = "opentelemetry-instrumentation-asyncio", specifier = ">=0.50b0" },
+    { name = "opentelemetry-instrumentation-requests", specifier = ">=0.50b0" },
+    { name = "opentelemetry-instrumentation-urllib3", specifier = ">=0.50b0" },
+    { name = "opentelemetry-processor-baggage", specifier = ">=0.50b0" },
+    { name = "opentelemetry-propagator-jaeger", specifier = ">=1.29.0" },
+    { name = "opentelemetry-sdk", specifier = ">=1.29.0" },
+    { name = "opentelemetry-semantic-conventions", specifier = ">=0.50b0" },
+    { name = "opentelemetry-util-http", specifier = ">=0.50b0" },
+    { name = "pebble", specifier = ">=5.0.7" },
+    { name = "peft", specifier = ">=0.10.0" },
+    { name = "pillow" },
+    { name = "propcache", specifier = ">=0.4.1" },
+    { name = "protobuf", specifier = ">=3.20.0" },
+    { name = "psutil" },
+    { name = "pydantic", specifier = "~=2.0" },
+    { name = "pydantic-ai-slim", extras = ["anthropic", "google", "openai"], specifier = ">=0.0.36" },
+    { name = "pydantic-settings", specifier = "~=2.0" },
+    { name = "pyjwt", extras = ["crypto"] },
+    { name = "pyopengl", specifier = ">=3.1.8" },
+    { name = "python-dateutil", specifier = ">=2.8.2" },
+    { name = "pyyaml", specifier = ">=6.0" },
+    { name = "questionary" },
+    { name = "requests", specifier = "<2.34" },
+    { name = "requests-cache" },
+    { name = "resize-right", specifier = ">=0.0.2" },
+    { name = "rich" },
+    { name = "s3fs" },
+    { name = "safetensors", specifier = ">=0.4.2" },
+    { name = "scikit-image", specifier = ">=0.20.0" },
+    { name = "scikit-learn", specifier = ">=1.4.1" },
+    { name = "scipy", specifier = ">=1.11.4" },
+    { name = "sentencepiece" },
+    { name = "setuptools" },
+    { name = "simpleeval", specifier = ">=1.0.3" },
+    { name = "skia-python" },
+    { name = "soundfile", specifier = ">=0.13" },
+    { name = "spandrel", specifier = ">=0.3.4" },
+    { name = "spandrel-extra-arches" },
+    { name = "sqlalchemy", specifier = ">=2.0,<2.1" },
+    { name = "tokenizers", specifier = ">=0.13.3" },
+    { name = "torch" },
+    { name = "torchdiffeq", specifier = ">=0.2.3" },
+    { name = "torchinfo" },
+    { name = "torchsde", specifier = ">=0.2.6" },
+    { name = "torchvision" },
+    { name = "tqdm" },
+    { name = "transformers", specifier = ">=4.57.3" },
+    { name = "trimesh" },
+    { name = "typer", specifier = ">=0.25.1" },
+    { name = "universal-pathlib" },
+    { name = "vtracer", specifier = ">=0.6.15,<1.0.0a0" },
+    { name = "watchdog" },
+    { name = "webcolors" },
+    { name = "wrapt", specifier = ">=1.16.0" },
+    { name = "yarl", specifier = ">=1.22.0" },
+    { name = "yt-dlp" },
 ]
 
 [[package]]
@@ -614,6 +700,17 @@ sdist = { url = "https://files.pythonhosted.org/packages/76/79/876f623840762906b
 wheels = [
     { url = "https://files.pythonhosted.org/packages/75/51/eea6171424d95f4cc796427786783da3f9c0bf360ba108fe8dcc2abb1433/comfyui_manager-4.3-py3-none-any.whl", hash = "sha256:521f76f564edebbf494396c30f9802c33f88189aebbf832119076b74ba8c6d8b", size = 1050555, upload-time = "2026-09-18T23:51:22.047Z" },
 ]
+
+[[package]]
+name = "comfyui-to-python-extension"
+version = "2.1.0"
+source = { editable = "packages/comfyui-to-python" }
+dependencies = [
+    { name = "black" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "black" }]
 
 [[package]]
 name = "comfyui-workflow-templates"
@@ -823,6 +920,37 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/03/68/288ca23c7c05c73e87ffe5efffc282400ac9b017f7a9bb03883f4310ea15/diffusers-0.35.2.tar.gz", hash = "sha256:30ecd552303edfcfe1724573c3918a8462ee3ab4d529bdbd4c0045f763affded", size = 3366711, upload-time = "2025-10-15T04:05:17.213Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/2e/38d9824f8c6bb048c5ba21c6d4da54c29c162a46b58b3ef907a360a76d3e/diffusers-0.35.2-py3-none-any.whl", hash = "sha256:d50d5e74fdd6dcf55e5c1d304bc52cc7c2659abd1752740d736d7b54078b4db5", size = 4121649, upload-time = "2025-10-15T04:05:14.391Z" },
+]
+
+[[package]]
+name = "diffusive"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "black" },
+    { name = "comfyui" },
+    { name = "comfyui-to-python-extension" },
+    { name = "numpy" },
+    { name = "opencv-contrib-python-headless" },
+    { name = "pillow" },
+    { name = "playwright" },
+    { name = "torch" },
+    { name = "torchvision" },
+    { name = "tqdm" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "black", specifier = ">=26.10.1" },
+    { name = "comfyui", editable = "packages/comfyui" },
+    { name = "comfyui-to-python-extension", editable = "packages/comfyui-to-python" },
+    { name = "numpy", specifier = ">=1.25.0,<2.3" },
+    { name = "opencv-contrib-python-headless", specifier = ">=4.12.0.88,<5" },
+    { name = "pillow" },
+    { name = "playwright", specifier = ">=1.64.0" },
+    { name = "torch", specifier = "==2.14.1+cu132", index = "https://download.pytorch.org/whl/cu132" },
+    { name = "torchvision", specifier = "==0.29.1+cu132", index = "https://download.pytorch.org/whl/cu132" },
+    { name = "tqdm" },
 ]
 
 [[package]]

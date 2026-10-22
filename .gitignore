@@ -12,9 +12,11 @@ __pycache__/
 build/
 dist/
 *.egg-info/
+.pytest_cache/
 
-# ComfyUI workspace data & heavy assets
-models/*
+# ComfyUI workspace data & heavy model weights (keep directory structure via .gitkeep)
+models/*/*
+!models/*/.gitkeep
 !models/.gitkeep
 custom_nodes/*
 !custom_nodes/.gitkeep
@@ -22,16 +24,19 @@ input/*
 !input/.gitkeep
 output/*
 !output/.gitkeep
-scratch/*
-!scratch/.gitkeep
+
+# ComfyUI runtime ephemeral folders & logs
 temp/
 user/
-
-# Checkpoints & logs
+previews/
+datasets/
+clip_gguf/
+unet_gguf/
 .checkpoint_*.json
 *.log
 
-# OS / Editor files
+# OS / Editor / Agent files
 .DS_Store
 .vscode/
 .idea/
+.agents/

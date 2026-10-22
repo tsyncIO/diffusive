@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "comfyui-to-python-extension"
+description = "Vendored static ComfyUI-to-Python compiler for Diffusive (uv & ComfyUI 0.41+ compatible)."
+version = "2.1.0"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = ["black"]
+
+[project.urls]
+Repository = "https://github.com/pydn/ComfyUI-to-Python-Extension"
+
+[tool.comfy]
+PublisherId = "pydn"
+DisplayName = "ComfyUI-to-Python-Extension"
+Icon = ""
+
+[tool.setuptools]
+packages = ["comfyui_to_python", "comfyui_to_python.generator"]

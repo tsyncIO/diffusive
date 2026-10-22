@@ -1,0 +1,242 @@
+import os
+import sys
+import warnings
+from typing import Any, Mapping, Sequence, Union
+
+
+def get_value_at_index(obj: Union[Sequence, Mapping], index: int) -> Any:
+    """Return a sequence or mapping result item by index."""
+    try:
+        return obj[index]
+    except KeyError:
+        return obj["result"][index]
+
+
+def find_path(name: str, path: str = None) -> str:
+    """Recursively search parent folders until the named entry is found."""
+    if path is None:
+        path = os.path.dirname(os.path.abspath(__file__))
+
+    if name in os.listdir(path):
+        path_name = os.path.join(path, name)
+        print(f"{name} found: {path_name}")
+        return path_name
+
+    parent_directory = os.path.dirname(path)
+    if parent_directory == path:
+        return None
+
+    return find_path(name, parent_directory)
+
+
+def get_comfyui_path() -> str:
+    """Return the configured ComfyUI workspace path, preferring COMFYUI_PATH when set."""
+    comfyui_path = os.environ.get("COMFYUI_PATH")
+    if comfyui_path:
+        return comfyui_path
+    found = find_path("ComfyUI")
+    if found:
+        return found
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    if os.path.isdir(os.path.join(project_root, "models")) or os.path.isdir(
+        os.path.join(project_root, "custom_nodes")
+    ):
+        return project_root
+    return os.getcwd()
+
+
+def add_comfyui_directory_to_sys_path() -> None:
+    """Add the ComfyUI workspace or checkout to sys.path."""
+    comfyui_path = get_comfyui_path()
+    if comfyui_path is not None and os.path.isdir(comfyui_path):
+        if comfyui_path in sys.path:
+            sys.path.remove(comfyui_path)
+        sys.path.insert(0, comfyui_path)
+        print(f"'{comfyui_path}' added to sys.path")
+
+
+def add_extra_model_paths() -> None:
+    """Load ComfyUI extra model paths configuration when available."""
+    extra_model_paths = find_path("extra_model_paths.yaml")
+    if extra_model_paths is None:
+        return
+    try:
+        from comfy.cmd.extra_model_paths import load_extra_path_config
+    except ImportError:
+        try:
+            from main import load_extra_path_config
+        except ImportError:
+            from utils.extra_config import load_extra_path_config
+    load_extra_path_config(extra_model_paths)
+
+
+def bootstrap_comfyui_runtime() -> None:
+    """Initialize ComfyUI runtime (supports both uv-packaged comfyui and git checkouts)."""
+    add_comfyui_directory_to_sys_path()
+    comfyui_path = get_comfyui_path()
+
+    try:
+        from dataclasses import replace
+        from comfy.cli_args_types import Configuration
+        from comfy.component_model.folder_path_types import FolderNames
+        from comfy.component_model.setup import setup_pre_torch, setup_post_torch
+        from comfy.cmd.folder_paths import init_default_paths
+        from comfy.execution_context import (
+            comfyui_execution_context,
+            current_execution_context,
+        )
+
+        config = Configuration(
+            cwd=comfyui_path,
+            base_directory=comfyui_path,
+            guess_settings=True,
+        )
+        setup_pre_torch(config)
+        folder_names = FolderNames(is_root=True)
+        init_default_paths(folder_names, config, replace_existing=True)
+        comfyui_execution_context.set(
+            replace(
+                current_execution_context(),
+                configuration=config,
+                folder_names_and_paths=folder_names,
+            )
+        )
+        setup_post_torch(config)
+        return
+    except ImportError:
+        pass
+
+    import comfy.options
+
+    comfy.options.enable_args_parsing()
+
+    from comfy.cli_args import args
+
+    if os.name == "nt":
+        os.environ["MIMALLOC_PURGE_DELAY"] = "0"
+
+    if args.default_device is not None:
+        default_dev = args.default_device
+        devices = list(range(32))
+        devices.remove(default_dev)
+        devices.insert(0, default_dev)
+        devices = ",".join(map(str, devices))
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(devices)
+        os.environ["HIP_VISIBLE_DEVICES"] = str(devices)
+
+    if args.cuda_device is not None:
+        os.environ["CUDA_VISIBLE_DEVICES"] = str(args.cuda_device)
+        os.environ["HIP_VISIBLE_DEVICES"] = str(args.cuda_device)
+        os.environ["ASCEND_RT_VISIBLE_DEVICES"] = str(args.cuda_device)
+
+    if args.oneapi_device_selector is not None:
+        os.environ["ONEAPI_DEVICE_SELECTOR"] = args.oneapi_device_selector
+
+    if args.deterministic and "CUBLAS_WORKSPACE_CONFIG" not in os.environ:
+        os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+
+    import cuda_malloc
+
+    if "rocm" in cuda_malloc.get_torch_version_noimport():
+        os.environ["OCL_SET_SVM_SIZE"] = "262144"
+
+
+def cleanup_comfyui_runtime(unload_models: bool | None = None) -> None:
+    """Best-effort cleanup for embedded or repeated generated-script execution."""
+    import gc
+    import warnings
+
+    def run_cleanup_hook(name: str, should_run: bool = True) -> None:
+        if not should_run or not hasattr(model_management, name):
+            return
+        cleanup_fn = getattr(model_management, name)
+        try:
+            cleanup_fn()
+        except Exception as exc:
+            warnings.warn(
+                f"ComfyUI cleanup hook {name} failed during teardown: {exc}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+
+    should_unload = unload_models
+    if should_unload is None:
+        should_unload = os.environ.get(
+            "COMFYUI_TOPYTHON_UNLOAD_MODELS", ""
+        ).lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }
+
+    try:
+        import comfy.model_management as model_management
+    except ModuleNotFoundError:
+        gc.collect()
+        return
+
+    run_cleanup_hook("cleanup_models_gc")
+    run_cleanup_hook("unload_all_models", should_run=should_unload)
+    run_cleanup_hook("soft_empty_cache")
+    gc.collect()
+
+
+def import_custom_nodes() -> None:
+    """Initialize ComfyUI custom nodes in the exporter runtime."""
+    comfyui_path = get_comfyui_path()
+    if comfyui_path and comfyui_path not in sys.path:
+        sys.path.insert(0, comfyui_path)
+
+    try:
+        from dataclasses import replace
+        from comfy_compatibility.vanilla import prepare_vanilla_environment
+        from comfy.execution_context import (
+            comfyui_execution_context,
+            current_execution_context,
+        )
+        from comfy.nodes.package import import_all_nodes_in_workspace
+        from comfy.nodes_context import get_nodes
+
+        prepare_vanilla_environment()
+        exported_nodes = import_all_nodes_in_workspace(raise_on_failure=False)
+        comfyui_execution_context.set(
+            replace(current_execution_context(), custom_nodes=exported_nodes)
+        )
+        get_nodes()
+        nodes_shim = sys.modules.get("nodes")
+        if nodes_shim is not None and hasattr(nodes_shim, "activate"):
+            nodes_shim.activate()
+        return
+    except ImportError:
+        pass
+
+    import asyncio
+    import execution
+    from nodes import init_extra_nodes
+
+    if comfyui_path in sys.path:
+        sys.path.remove(comfyui_path)
+    sys.path.insert(0, comfyui_path)
+
+    import server
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    server_instance = server.PromptServer(loop)
+    execution.PromptQueue(server_instance)
+    asyncio.run(init_extra_nodes())
+
+
+def get_node_class_mappings() -> dict:
+    """Load ComfyUI node mappings on demand."""
+    add_comfyui_directory_to_sys_path()
+    try:
+        from comfy.nodes_context import get_nodes
+
+        return get_nodes().NODE_CLASS_MAPPINGS
+    except ImportError:
+        from nodes import NODE_CLASS_MAPPINGS
+
+        return NODE_CLASS_MAPPINGS

@@ -1,86 +1,88 @@
 # Custom Nodes GitHub Links
-# Add one GitHub URL per line
-# The script will automatically extract the repository name
+# Format: GITHUB_URL [ @ COMMIT_SHA ]
+# Note: ComfyUI-to-Python-Extension is vendored natively in packages/comfyui-to-python/
 
-https://github.com/Comfy-Org/ComfyUI-Manager.git
-https://github.com/crystian/ComfyUI-Crystools.git
-https://github.com/rgthree/rgthree-comfy.git
-https://github.com/kijai/ComfyUI-KJNodes.git
-https://github.com/talesofai/comfyui-browser.git
-https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes.git
-https://github.com/Shakker-Labs/ComfyUI-IPAdapter-Flux.git
-https://github.com/shiimizu/ComfyUI-TiledDiffusion.git
-https://github.com/lucasb-eyer/ComfyUI-to-Python-Extension.git
-https://github.com/gseth/ControlAltAI-Nodes.git
-https://github.com/ClownsharkBatwing/RES4LYF.git
-https://github.com/WASasquatch/was-node-suite-comfyui.git
-https://github.com/MrForExample/ComfyUI-3D-Pack.git
-https://github.com/cubiq/ComfyUI_IPAdapter_plus.git
-https://github.com/willmiao/ComfyUI-Lora-Manager.git
-https://github.com/Chaoses-Ib/ComfyScript.git
-https://github.com/chrisgoringe/cg-use-everywhere.git
-https://github.com/nunchaku-tech/ComfyUI-nunchaku.git
-https://github.com/SXQBW/ComfyUI-Qwen-VL.git
-https://github.com/Gourieff/ComfyUI-ReActor.git
-https://github.com/kijai/ComfyUI-WanVideoWrapper.git
-https://github.com/11cafe/comfyui-workspace-manager.git
-https://github.com/ShmuelRonen/ComfyUI-EmptyHunyuanLatent.git
-https://github.com/kijai/ComfyUI-Florence2.git
-https://github.com/city96/ComfyUI-GGUF.git
-https://github.com/ltdrdata/ComfyUI-Impact-Pack.git
-https://github.com/Fannovel16/comfyui_controlnet_aux.git
-https://github.com/pollockjj/ComfyUI-MultiGPU.git
-https://github.com/flyingshutter/As_ComfyUI_CustomNodes
-https://github.com/christian-byrne/audio-separation-nodes-comfyui
-https://github.com/Azornes/Comfyui-Resolution-Master
-https://github.com/ssitu/ComfyUI_restart_sampling
-https://github.com/HM-RunningHub/ComfyUI_RH_APICall
-https://github.com/HM-RunningHub/ComfyUI_RH_LLM_API
-https://github.com/HM-RunningHub/ComfyUI_RH_OminiControl
-https://github.com/1038lab/ComfyUI-RMBG
-https://github.com/PozzettiAndrea/ComfyUI-SAM3
-https://github.com/Kaharos94/ComfyUI-Saveaswebp
-https://github.com/9nate-drake/Comfyui-SecNodes
-https://github.com/kijai/ComfyUI-segment-anything-2
-https://github.com/shizuka-ai/ComfyUI-tbox
-https://github.com/CheungPuiKwan/ComfyUI-TeaCache
-https://github.com/un-seen/comfyui-tensorops
-https://github.com/pictorialink/ComfyUI-Text-Translation
-https://github.com/TinyTerra/ComfyUI_tinyterraNodes
-https://github.com/TTPlanetPig/Comfyui_TTP_Toolset
-https://github.com/ssitu/ComfyUI_UltimateSDUpscale
-https://github.com/zhangp365/ComfyUI-utils-nodes
-https://github.com/jamesWalker55/comfyui-various
-https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite
-https://github.com/kijai/ComfyUI-WanAnimatePreprocess
-https://github.com/alisson-anjos/ComfyUI-Workarounds
-https://github.com/kadirnar/ComfyUI-YOLO
-https://github.com/tooldigital/ComfyUI-Yolo-Cropper
-https://github.com/kijai/ComfyUI-HunyuanVideoWrapper
-https://github.com/alexopus/ComfyUI-Image-Saver
-https://github.com/ltdrdata/ComfyUI-Impact-Subpack
-https://github.com/lquesada/ComfyUI-Inpaint-CropAndStitch
-https://github.com/HoangAViet/lucy-edit-comfyui
-https://github.com/ChenDarYen/Normalized-Attention-Guidance
-https://github.com/chflame163/ComfyUI_LayerStyle
-https://github.com/chflame163/ComfyUI_LayerStyle_Advance
-https://github.com/MixLabPro/comfyui-mixlab-nodes
-https://github.com/TTPlanetPig/Comfyui_Object_Detect_QWen_VL
-https://github.com/TTPlanetPig/Comfyui_Object_Migration
-https://github.com/alisson-anjos/ComfyUI-Ollama-Describer
-https://github.com/EllangoK/ComfyUI-post-processing-nodes
-https://github.com/omar92/ComfyUI-QualityOfLifeSuit_Omar92
-https://github.com/1038lab/ComfyUI-QwenVL
-https://github.com/lrzjason/Comfyui-QwenEditUtils
-https://github.com/thu-ml/SageAttention
-https://github.com/regiellis/ComfyUI-SDXL-Adherence
-https://github.com/twri/sdxl_prompt_styler
-https://github.com/marhensa/sdxl-recommended-res-calc
-https://github.com/rgthree/soundflow
-https://github.com/yolain/ComfyUI-Easy-Use.git
-https://github.com/kijai/ComfyUI-MelBandRoFormer.git
-https://github.com/kijai/ComfyUI-GIMM-VFI.git
-https://github.com/jjkramhoeft/ComfyUI-Jjk-Nodes.git
-https://github.com/cubiq/ComfyUI_essentials.git
-https://github.com/melMass/comfy_mtb.git
-https://github.com/yolain/ComfyUI-Easy-Sam3.git
+# --- Active custom nodes for workflows/qedit.json ---
+https://github.com/city96/ComfyUI-GGUF.git @ b3ec875a68d94b758914fd48d30571d953bb7a54
+
+# --- Commented out custom nodes (not needed for qedit.json) ---
+# https://github.com/Comfy-Org/ComfyUI-Manager.git
+# https://github.com/crystian/ComfyUI-Crystools.git
+# https://github.com/rgthree/rgthree-comfy.git
+# https://github.com/kijai/ComfyUI-KJNodes.git
+# https://github.com/talesofai/comfyui-browser.git
+# https://github.com/Suzie1/ComfyUI_Comfyroll_CustomNodes.git
+# https://github.com/Shakker-Labs/ComfyUI-IPAdapter-Flux.git
+# https://github.com/shiimizu/ComfyUI-TiledDiffusion.git
+# https://github.com/gseth/ControlAltAI-Nodes.git
+# https://github.com/ClownsharkBatwing/RES4LYF.git
+# https://github.com/WASasquatch/was-node-suite-comfyui.git
+# https://github.com/MrForExample/ComfyUI-3D-Pack.git
+# https://github.com/cubiq/ComfyUI_IPAdapter_plus.git
+# https://github.com/willmiao/ComfyUI-Lora-Manager.git
+# https://github.com/Chaoses-Ib/ComfyScript.git
+# https://github.com/chrisgoringe/cg-use-everywhere.git
+# https://github.com/nunchaku-tech/ComfyUI-nunchaku.git
+# https://github.com/SXQBW/ComfyUI-Qwen-VL.git
+# https://github.com/Gourieff/ComfyUI-ReActor.git
+# https://github.com/kijai/ComfyUI-WanVideoWrapper.git
+# https://github.com/11cafe/comfyui-workspace-manager.git
+# https://github.com/ShmuelRonen/ComfyUI-EmptyHunyuanLatent.git
+# https://github.com/kijai/ComfyUI-Florence2.git
+# https://github.com/ltdrdata/ComfyUI-Impact-Pack.git
+# https://github.com/Fannovel16/comfyui_controlnet_aux.git
+# https://github.com/pollockjj/ComfyUI-MultiGPU.git
+# https://github.com/flyingshutter/As_ComfyUI_CustomNodes
+# https://github.com/christian-byrne/audio-separation-nodes-comfyui
+# https://github.com/Azornes/Comfyui-Resolution-Master
+# https://github.com/ssitu/ComfyUI_restart_sampling
+# https://github.com/HM-RunningHub/ComfyUI_RH_APICall
+# https://github.com/HM-RunningHub/ComfyUI_RH_LLM_API
+# https://github.com/HM-RunningHub/ComfyUI_RH_OminiControl
+# https://github.com/1038lab/ComfyUI-RMBG
+# https://github.com/PozzettiAndrea/ComfyUI-SAM3
+# https://github.com/Kaharos94/ComfyUI-Saveaswebp
+# https://github.com/9nate-drake/Comfyui-SecNodes
+# https://github.com/kijai/ComfyUI-segment-anything-2
+# https://github.com/shizuka-ai/ComfyUI-tbox
+# https://github.com/CheungPuiKwan/ComfyUI-TeaCache
+# https://github.com/un-seen/comfyui-tensorops
+# https://github.com/pictorialink/ComfyUI-Text-Translation
+# https://github.com/TinyTerra/ComfyUI_tinyterraNodes
+# https://github.com/TTPlanetPig/Comfyui_TTP_Toolset
+# https://github.com/ssitu/ComfyUI_UltimateSDUpscale
+# https://github.com/zhangp365/ComfyUI-utils-nodes
+# https://github.com/jamesWalker55/comfyui-various
+# https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite
+# https://github.com/kijai/ComfyUI-WanAnimatePreprocess
+# https://github.com/alisson-anjos/ComfyUI-Workarounds
+# https://github.com/kadirnar/ComfyUI-YOLO
+# https://github.com/tooldigital/ComfyUI-Yolo-Cropper
+# https://github.com/kijai/ComfyUI-HunyuanVideoWrapper
+# https://github.com/alexopus/ComfyUI-Image-Saver
+# https://github.com/ltdrdata/ComfyUI-Impact-Subpack
+# https://github.com/lquesada/ComfyUI-Inpaint-CropAndStitch
+# https://github.com/HoangAViet/lucy-edit-comfyui
+# https://github.com/ChenDarYen/Normalized-Attention-Guidance
+# https://github.com/chflame163/ComfyUI_LayerStyle
+# https://github.com/chflame163/ComfyUI_LayerStyle_Advance
+# https://github.com/MixLabPro/comfyui-mixlab-nodes
+# https://github.com/TTPlanetPig/Comfyui_Object_Detect_QWen_VL
+# https://github.com/TTPlanetPig/Comfyui_Object_Migration
+# https://github.com/alisson-anjos/ComfyUI-Ollama-Describer
+# https://github.com/EllangoK/ComfyUI-post-processing-nodes
+# https://github.com/omar92/ComfyUI-QualityOfLifeSuit_Omar92
+# https://github.com/1038lab/ComfyUI-QwenVL
+# https://github.com/lrzjason/Comfyui-QwenEditUtils
+# https://github.com/thu-ml/SageAttention
+# https://github.com/regiellis/ComfyUI-SDXL-Adherence
+# https://github.com/twri/sdxl_prompt_styler
+# https://github.com/marhensa/sdxl-recommended-res-calc
+# https://github.com/rgthree/soundflow
+# https://github.com/yolain/ComfyUI-Easy-Use.git
+# https://github.com/kijai/ComfyUI-MelBandRoFormer.git
+# https://github.com/kijai/ComfyUI-GIMM-VFI.git
+# https://github.com/jjkramhoeft/ComfyUI-Jjk-Nodes.git
+# https://github.com/cubiq/ComfyUI_essentials.git
+# https://github.com/melMass/comfy_mtb.git
+# https://github.com/yolain/ComfyUI-Easy-Sam3.git

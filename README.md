@@ -1,6 +1,8 @@
 # Diffusive
 
-A `uv`-managed, headless ComfyUI Python workspace for running and compiling standalone AI video editing and generation pipelines.
+A `uv`-managed, self-contained headless ComfyUI Python framework for compiling and running standalone AI video and image manipulation pipelines.
+
+Both **ComfyUI core (`0.41.0.1`)** and the **ComfyUI-to-Python compiler (`2.1.0`)** are statically vendored inside `packages/` so the framework is completely immune to upstream breaking changes.
 
 ---
 
@@ -8,29 +10,40 @@ A `uv`-managed, headless ComfyUI Python workspace for running and compiling stan
 
 ```text
 diffusive/
-├── pyproject.toml                     # uv project configuration & dependencies
+├── pyproject.toml                     # Root uv workspace configuration & local package sources
 ├── uv.lock                            # Locked dependency versions
 ├── .python-version                    # Pinned Python version (3.12)
-├── implementation_plan.md             # Living architecture & implementation plan
-├── comfyui_to_python_walkthrough.md   # Detailed guide on Frontend JSON -> Python compilation
-├── uv_pip_comfy.md                    # Reference for uv pip ComfyUI installation
 │
-├── models/                            # Downloaded model weights (diffusion_models, vae, loras, etc.)
-├── custom_nodes/                      # Git-cloned ComfyUI custom nodes
+├── packages/                          # Static, version-controlled core libraries
+│   ├── comfyui/                       # Vendored ComfyUI core engine (v0.41.0.1)
+│   └── comfyui-to-python/             # Vendored ComfyUI-to-Python compiler (pre-patched for uv)
+│
+├── docs/                              # Architecture & evolution documentation
+│   ├── architecture_and_evolution.md  # Complete codebase evolution & evaluation trace
+│   ├── comfyui_to_python_walkthrough.md # Detailed guide on Frontend JSON -> Python compilation
+│   ├── implementation_plan.md         # Workspace restructuring plan & checklist
+│   ├── uv_pip_comfy.md                # Reference for uv pip ComfyUI setup
+│   ├── architecture_and_flow.excalidraw
+│   └── inference_ifTalk_execution_flow.excalidraw
+│
+├── models/                            # Static model directory tree (unet, text_encoders, vae, etc.)
+├── custom_nodes/                      # Workflow custom nodes + symlink to packages/comfyui-to-python
 ├── workflows/                         # ComfyUI JSON workflows (Frontend UI & API formats)
-├── input/                             # Input videos & audio files
-├── output/                            # Generated videos, diff masks, and stacked comparison videos
-├── scratch/                           # Intermediate serialized API & frontend JSONs
+│   ├── qedit.json                     # Frontend ComfyUI workflow (Qwen-Image GGUF)
+│   └── qedit_api.json                 # Serialized Backend API JSON for qedit.json
+├── input/                             # Input images, videos & audio files
+├── output/                            # Generated images/videos, diff masks, and stacked videos
 │
 └── scripts/
+    ├── inference_qedit.py             # Standalone Qwen-Image GGUF text-to-image script
     ├── inference_ifTalk.py            # Standalone Wan2.1 + InfiniteTalk V2V / lip-sync script
-    ├── convert.py                     # Headless Playwright converter (Workflow JSON -> Python script)
+    ├── convert.py                     # Headless Playwright converter (Frontend JSON -> API JSON -> Python)
     ├── diff_masks.py                  # Frame-by-frame RGB difference mask & lossless MP4 generator
     ├── stack_video.py                 # Side-by-side batch video comparator (Original | Edited | Diff)
     ├── download_models.sh             # Downloads model weights defined in model_links.txt
     ├── model_links.txt                # Model URLs & target subfolders
-    ├── download_custom_nodes.sh       # Clones custom nodes & installs their requirements into .venv
-    └── custom_nodes_links.txt         # Custom node GitHub repository URLs
+    ├── download_custom_nodes.sh       # Clones pinned custom nodes & links packages/comfyui-to-python
+    └── custom_nodes_links.txt         # Custom node GitHub URLs (with optional `@ <commit_sha>` pinning)
 ```
 
 ---
@@ -39,7 +52,7 @@ diffusive/
 
 ### 1. Environment Setup
 
-Install `uv` if not already installed, then sync the project environment:
+Install `uv` if not already installed, then sync the project environment (which installs `packages/comfyui` and `packages/comfyui-to-python` in editable mode):
 
 ```bash
 uv sync --inexact
@@ -53,7 +66,7 @@ uv run playwright install chromium
 
 ### 2. Download Custom Nodes & Models
 
-Clone all configured custom nodes into `./custom_nodes/` and install their Python dependencies into `.venv`:
+Link the static `packages/comfyui-to-python` compiler, clone any workflow-specific custom nodes (with commit-hash pinning) into `./custom_nodes/`, and install their Python dependencies into `.venv`:
 
 ```bash
 ./scripts/download_custom_nodes.sh
@@ -67,62 +80,89 @@ Download all required model weights into `./models/`:
 
 ---
 
-## Usage
+## End-to-End Walkthrough: Frontend JSON → Backend API JSON → Standalone Python (`qedit.json`)
 
-### Run a Standalone Python Workflow Headlessly
+ComfyUI stores visual graphs in a **Frontend Layout JSON** (`workflows/qedit.json`) containing node coordinates, UI links, and positional `widgets_values` arrays. Because the Python execution engine requires named parameters (`class_type` and key-value `inputs`), converting a frontend workflow into a standalone Python script follows a 5-step pipeline:
 
-Execute compiled ComfyUI Python scripts directly with `uv run`:
-
-```bash
-uv run python scripts/inference_ifTalk.py \
-  --video input/sample.mp4 \
-  --audio input/sample.wav \
-  --positive_prompt "A person speaking clearly to the camera." \
-  --output_prefix ./output/generated \
-  --device cuda:0 \
-  --steps 4
+```mermaid
+flowchart LR
+    A["1. Analyze Workflow\n(workflows/qedit.json)"] --> B["2. Auto-Download\nNodes & Models"]
+    B --> C["3. Serialize to API JSON\n(app.graphToPrompt)"]
+    C --> D["4. Compile to Python\n(POST /saveasscript)"]
+    D --> E["5. Run Standalone\n(scripts/inference_qedit.py)"]
 ```
 
-View all CLI options for the workflow:
+### Step 1: Analyze the Frontend Workflow JSON
+Inspecting `workflows/qedit.json` reveals all required nodes, custom node packages (`properties.cnr_id` & commit `properties.ver`), and model filenames (`widgets_values`):
 
-```bash
-uv run python scripts/inference_ifTalk.py --help
-```
+| Node ID | Node Type | Source (`cnr_id`) | Required Model / Role | Target Folder |
+| :--- | :--- | :--- | :--- | :--- |
+| `71` | `UnetLoaderGGUF` | `ComfyUI-GGUF` | `qwen-image-Q8_0.gguf` | `models/unet` |
+| `38` | `CLIPLoader` | `comfy-core` | `qwen_2.5_vl_7b_fp8_scaled.safetensors` | `models/text_encoders` |
+| `39` | `VAELoader` | `comfy-core` | `qwen_image_vae.safetensors` | `models/vae` |
+| `6`, `7` | `CLIPTextEncode` | `comfy-core` | Positive & Negative prompt encoding | *(built-in)* |
+| `58` | `EmptySD3LatentImage` | `comfy-core` | Empty latent batch (`1024x768`, `batch_size=2`) | *(built-in)* |
+| `66` | `ModelSamplingAuraFlow` | `comfy-core` | AuraFlow shift (`3.5`) | *(built-in)* |
+| `3`, `8`, `60` | `KSampler`, `VAEDecode`, `SaveImage` | `comfy-core` | Sampling (`10` steps, `euler`/`simple`), decoding & saving | *(built-in)* |
 
----
-
-### Convert a ComfyUI JSON Workflow to a Standalone Python Script
-
-1. Start the ComfyUI server (which loads `custom_nodes/ComfyUI-to-Python-Extension`):
-   ```bash
-   uv run comfyui serve --guess-settings
+### Step 2: Configure & Run Auto-Downloaders
+1. **Custom Nodes (`scripts/custom_nodes_links.txt`)**:
+   `ComfyUI-to-Python-Extension` is vendored natively in `packages/comfyui-to-python/`. For external nodes, enable only what `qedit.json` needs and pin its exact commit hash from `qedit.json`:
+   ```text
+   https://github.com/city96/ComfyUI-GGUF.git @ b3ec875a68d94b758914fd48d30571d953bb7a54
    ```
-2. In another terminal, run the headless Playwright converter:
+   Run `./scripts/download_custom_nodes.sh`.
+
+2. **Model Weights (`scripts/model_links.txt`)**:
+   Configure the direct Hugging Face resolve links mapped to their target folders:
+   ```text
+   https://huggingface.co/city96/Qwen-Image-gguf/resolve/main/qwen-image-Q8_0.gguf | models/unet
+   https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/text_encoders/qwen_2.5_vl_7b_fp8_scaled.safetensors | models/text_encoders
+   https://huggingface.co/Comfy-Org/Qwen-Image_ComfyUI/resolve/main/split_files/vae/qwen_image_vae.safetensors | models/vae
+   ```
+   Run `./scripts/download_models.sh` to automatically download and place each file in `./models/<subfolder>/`.
+
+### Step 3 & 4: Convert Frontend JSON to Backend API JSON & Standalone Python
+1. Start the headless ComfyUI server:
+   ```bash
+   uv run comfyui serve --guess-settings --listen 127.0.0.1 --port 8189
+   ```
+2. In another terminal, run `scripts/convert.py`:
    ```bash
    uv run python scripts/convert.py \
-     --input workflows/kiwiEdit.json \
-     --output scripts/inference_kiwiEdit.py
+     --input workflows/qedit.json \
+     --output scripts/inference_qedit.py \
+     --url http://127.0.0.1:8189
    ```
-3. Stop the ComfyUI server and run your newly generated standalone script directly:
-   ```bash
-   uv run python scripts/inference_kiwiEdit.py
-   ```
+   - Saves the serialized **Backend API JSON** to `workflows/qedit_api.json`.
+   - Compiles the standalone Python script to `scripts/inference_qedit.py`.
+3. Stop the ComfyUI server once conversion is complete.
+
+### Step 5: Run the Standalone Python Backend Script
+Verify that the ComfyUI runtime, custom nodes, and node mappings initialize properly without loading heavy weights using `--dry-run`:
+
+```bash
+uv run python scripts/inference_qedit.py --dry-run
+```
+
+Run the full standalone Qwen-Image generation pipeline headlessly:
+
+```bash
+uv run python scripts/inference_qedit.py \
+  --output_prefix qedit_test \
+  --steps 10 \
+  --batch_size 1 \
+  --device cuda:0
+```
+
+View all customizable CLI arguments (`--positive_prompt`, `--negative_prompt`, `--width`, `--height`, `--batch_size`, `--steps`, `--cfg`, `--shift`, `--seed`, `--device`, `--dry-run`):
+
+```bash
+uv run python scripts/inference_qedit.py --help
+```
 
 ---
 
-### Post-Processing & Video Comparison
+## Documentation (`docs/`)
 
-#### Batch Side-by-Side Video Stacking (`Original | Edited | Difference`)
-
-```bash
-uv run python scripts/stack_video.py \
-  --json-dir output/ \
-  --video-dir input/ \
-  --output-dir output/stacks
-```
-
-Useful flags:
-* `--latest N`: Process only the `N` most recently generated videos.
-* `--random N`: Process `N` randomly sampled videos.
-* `--limit N`: Process up to `N` videos.
-* `--dry-run`: Inspect matched video pairs and resolutions without rendering.
+See [docs/architecture_and_evolution.md](file:///home/tmdt-admin/comfy/docs/architecture_and_evolution.md) for the complete architectural evolution, root-cause analysis of upstream ComfyUI fixes, static `packages/` design, and full evaluation trace.

@@ -1,0 +1,426 @@
+from __future__ import annotations
+
+import json
+import logging
+from dataclasses import dataclass, field, asdict
+from importlib.metadata import entry_points
+from pathlib import Path
+from typing import Final, Optional
+
+from comfyui_workflow_templates import get_asset_path, iter_templates
+from rich.console import Console
+from rich.table import Table
+from ..component_model.workflow_convert import convert_ui_to_api
+from ..component_model.prompt_utils import (
+    _TEXT_ENCODE_FIELDS,
+    _STEPS_CLASS_TYPES,
+    _SEED_FIELDS,
+    _IMAGE_LOAD_CLASS_TYPES,
+    _VIDEO_LOAD_CLASS_TYPES,
+    _AUDIO_LOAD_CLASS_TYPES,
+    _CFG_CLASS_TYPES,
+    _SAMPLER_CLASS_TYPES,
+    _SCHEDULER_CLASS_TYPES,
+    _DENOISE_CLASS_TYPES,
+    _LATENT_SIZE_CLASS_TYPES,
+    _CHECKPOINT_CLASS_TYPES,
+    _DIFFUSION_MODEL_CLASS_TYPES,
+)
+
+logger = logging.getLogger(__name__)
+
+_INDEX_PREFIXES: Final[tuple[str, str]] = ("index", "fuse_options")
+
+_NEGATIVE_CAPABLE_CLASS_TYPES: Final[frozenset[str]] = frozenset({
+    "KSampler",
+    "KSamplerAdvanced",
+    "CFGGuider",
+})
+
+
+@dataclass
+class TemplateInfo:
+    name: str
+    source: str
+    path: Optional[str] = None
+    template_id: Optional[str] = None
+    description: Optional[str] = None
+    tags: list[str] = field(default_factory=list)
+    media_type: Optional[str] = None
+    bundle: Optional[str] = None
+    supported_params: list[str] = field(default_factory=list)
+    task: Optional[str] = None  # inferred: text-to-image, image-edit, text-to-video, image-to-video, audio, other
+
+
+def _load_index_metadata() -> dict[str, dict]:
+    path = get_asset_path("index", "index.json")
+    with open(path) as f:
+        categories = json.load(f)
+    return {
+        t["name"]: t
+        for cat in categories
+        for t in cat.get("templates", [])
+    }
+
+
+def _templates_from_package() -> list[TemplateInfo]:
+    index = _load_index_metadata()
+    templates = []
+    for entry in iter_templates():
+        tid = str(entry.template_id)
+        if tid.startswith(_INDEX_PREFIXES):
+            continue
+        meta = index.get(tid, {})
+        path = get_asset_path(tid, f"{tid}.json")
+        templates.append(TemplateInfo(
+            name=meta.get("title") or tid,
+            source="package",
+            path=path,
+            template_id=tid,
+            description=meta.get("description"),
+            tags=meta.get("tags", []),
+            media_type=meta.get("mediaType"),
+            bundle=entry.bundle,
+        ))
+    return templates
+
+
+def _templates_from_custom_nodes() -> list[TemplateInfo]:
+    from .folder_paths import get_folder_paths
+    from ..app.custom_node_manager import CustomNodeManager
+
+    custom_node_roots = list(get_folder_paths("custom_nodes"))
+    custom_node_roots.extend(_facade_custom_node_roots())
+
+    return [
+        TemplateInfo(name=wf_name, source=f"custom_node:{node_name}", path=filepath)
+        for node_name, wf_name, filepath
+        in CustomNodeManager.scan_example_workflows(_dedupe_paths(custom_node_roots))
+    ]
+
+
+def _facade_custom_node_roots() -> list[str]:
+    from ..nodes.package import _extract_vanilla_custom_node_roots
+
+    roots: list[str] = []
+    for entry_point in entry_points().select(group="comfyui.custom_nodes"):
+        try:
+            module = entry_point.load()
+        except Exception as exc:
+            logger.debug("Failed to inspect custom-node entry point %s for workflows", entry_point, exc_info=exc)
+            continue
+        roots.extend(_extract_vanilla_custom_node_roots(module))
+    return roots
+
+
+def _dedupe_paths(paths: list[str]) -> list[str]:
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for path in paths:
+        normalized = str(Path(path).resolve())
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(normalized)
+    return deduped
+
+
+def _templates_from_dirs(dirs: list[str]) -> list[TemplateInfo]:
+    templates = []
+    for d in dirs:
+        d_path = Path(d)
+        if not d_path.is_dir():
+            logger.warning(f"Template dir does not exist: {d}")
+            continue
+        for filepath in d_path.rglob("*.json"):
+            templates.append(TemplateInfo(
+                name=filepath.stem,
+                source=f"dir:{d}",
+                path=str(filepath),
+            ))
+    return templates
+
+
+def get_all_templates(extra_dirs: list[str] = None) -> list[TemplateInfo]:
+    extra_dirs = extra_dirs or []
+    all_templates = []
+    all_templates.extend(_templates_from_package())
+    all_templates.extend(_templates_from_custom_nodes())
+    all_templates.extend(_templates_from_dirs(extra_dirs))
+    return all_templates
+
+
+def _collect_class_types(workflow: dict) -> set[str]:
+    types: set[str] = set()
+
+    if all(isinstance(v, dict) and "class_type" in v for v in workflow.values() if isinstance(v, dict)):
+        for node in workflow.values():
+            if isinstance(node, dict) and "class_type" in node:
+                types.add(node["class_type"])
+
+    extra_prompt = workflow.get("extra", {}).get("prompt", {})
+    if isinstance(extra_prompt, dict):
+        for node in extra_prompt.values():
+            if isinstance(node, dict) and "class_type" in node:
+                types.add(node["class_type"])
+
+    for node in workflow.get("nodes", []):
+        node_type = node.get("type", "")
+        if node_type:
+            types.add(node_type)
+
+    for sg in workflow.get("definitions", {}).get("subgraphs", []):
+        for node in sg.get("nodes", []):
+            node_type = node.get("type", "")
+            if node_type:
+                types.add(node_type)
+
+    return types
+
+
+_PARAM_CHECKS: Final[tuple[tuple[str, frozenset[str]], ...]] = (
+    ("prompt", frozenset(_TEXT_ENCODE_FIELDS.keys())),
+    ("steps", _STEPS_CLASS_TYPES),
+    ("seed", frozenset(_SEED_FIELDS.keys())),
+    ("cfg", _CFG_CLASS_TYPES),
+    ("sampler", _SAMPLER_CLASS_TYPES),
+    ("scheduler", _SCHEDULER_CLASS_TYPES),
+    ("denoise", _DENOISE_CLASS_TYPES),
+    ("width", _LATENT_SIZE_CLASS_TYPES),
+    ("height", _LATENT_SIZE_CLASS_TYPES),
+    ("batch-size", _LATENT_SIZE_CLASS_TYPES),
+    ("checkpoint", _CHECKPOINT_CLASS_TYPES),
+    ("diffusion-model", _DIFFUSION_MODEL_CLASS_TYPES),
+    ("image", _IMAGE_LOAD_CLASS_TYPES),
+    ("video", _VIDEO_LOAD_CLASS_TYPES),
+    ("audio", _AUDIO_LOAD_CLASS_TYPES),
+)
+
+
+def _detect_supported_params(workflow: dict) -> list[str]:
+    types = _collect_class_types(workflow)
+    params = [name for name, class_types in _PARAM_CHECKS if types & class_types]
+    if "prompt" in params and types & _NEGATIVE_CAPABLE_CLASS_TYPES:
+        params.insert(params.index("prompt") + 1, "negative-prompt")
+    return params
+
+
+# Class-type markers that identify each output modality. Order matters:
+# video/audio win over image when both are present in a single workflow
+# (a t2v workflow may still have a Load*Image for a first-frame ref).
+_IMAGE_OUTPUT_CLASS_TYPES = frozenset({
+    "SaveImage", "PreviewImage", "SaveImageWebsocket",
+})
+_VIDEO_OUTPUT_CLASS_TYPES = frozenset({
+    "SaveVideo", "SaveAnimatedWEBP", "SaveAnimatedPNG", "VHS_VideoCombine",
+    "SaveWEBM",
+})
+_AUDIO_OUTPUT_CLASS_TYPES = frozenset({
+    "SaveAudio", "PreviewAudio",
+})
+
+
+def _detect_task(workflow: dict, supported_params: list[str]) -> str:
+    """Infer a short task label from a workflow's node class types.
+
+    Returns one of: ``text-to-image``, ``image-edit``, ``text-to-video``,
+    ``image-to-video``, ``audio``, ``other``.
+
+    Uses the output-node modality (image vs video vs audio) as primary
+    signal and the presence of image *input* nodes as the discriminator
+    between "text-to-" and "-edit" / "image-to-" variants. The
+    ``supported_params`` list is passed in to avoid re-walking the graph.
+    """
+    types = _collect_class_types(workflow)
+
+    has_image_input = "image" in supported_params
+    has_video_input = "video" in supported_params
+
+    if types & _VIDEO_OUTPUT_CLASS_TYPES:
+        return "image-to-video" if (has_image_input or has_video_input) else "text-to-video"
+    if types & _AUDIO_OUTPUT_CLASS_TYPES:
+        return "audio"
+    if types & _IMAGE_OUTPUT_CLASS_TYPES:
+        return "image-edit" if has_image_input else "text-to-image"
+    return "other"
+
+
+def _populate_supported_params(templates: list[TemplateInfo]) -> None:
+    for tmpl in templates:
+        if not tmpl.path or not Path(tmpl.path).exists():
+            continue
+        try:
+            workflow = json.loads(Path(tmpl.path).read_text())
+            tmpl.supported_params = _detect_supported_params(workflow)
+            tmpl.task = _detect_task(workflow, tmpl.supported_params)
+        except (json.JSONDecodeError, OSError):
+            logger.debug(f"Could not read template {tmpl.path}")
+
+
+def _build_example_invocation(tmpl: TemplateInfo, include_all: bool = True) -> str:
+    name = tmpl.template_id or tmpl.name
+    parts = [f"comfyui workflows run {name}"]
+    if include_all:
+        parts.append("-ag")
+
+    placeholders = {
+        "prompt": '--prompt "your text here"',
+        "negative-prompt": '--negative-prompt "things to avoid"',
+        "steps": "--steps 20",
+        "seed": "--seed 42",
+        "cfg": "--cfg 7.0",
+        "sampler": "--sampler euler",
+        "scheduler": "--scheduler normal",
+        "denoise": "--denoise 1.0",
+        "width": "--width 1024",
+        "height": "--height 1024",
+        "batch-size": "--batch-size 1",
+        "checkpoint": "--checkpoint model.safetensors",
+        "diffusion-model": "--diffusion-model model.safetensors",
+        "image": "--image https://example.com/image.png",
+        "video": "--video https://example.com/video.mp4",
+        "audio": "--audio https://example.com/audio.wav",
+    }
+
+    for param in tmpl.supported_params:
+        if param in placeholders:
+            parts.append(placeholders[param])
+
+    return " ".join(parts)
+
+
+def resolve_template(name_or_id: str, extra_dirs: list[str] = None) -> str:
+    package_templates = _templates_from_package()
+
+    for t in package_templates:
+        if t.template_id == name_or_id:
+            return t.path
+
+    lower = name_or_id.lower()
+    for t in package_templates:
+        if t.name.lower() == lower:
+            return t.path
+
+    templates = package_templates + _templates_from_custom_nodes() + _templates_from_dirs(extra_dirs or [])
+
+    for t in templates:
+        if t.template_id == name_or_id:
+            return t.path
+
+    for t in templates:
+        if t.name.lower() == lower:
+            return t.path
+
+    matches = [t for t in templates if lower in t.name.lower() or (t.template_id and lower in t.template_id.lower())]
+    if len(matches) == 1:
+        return matches[0].path
+    if len(matches) > 1:
+        names = ", ".join(m.template_id or m.name for m in matches[:5])
+        raise ValueError(f"Ambiguous template '{name_or_id}', matches: {names}")
+    raise ValueError(f"No template found matching '{name_or_id}'")
+
+
+def list_templates(format: str = "table", extra_dirs: list[str] = None, convert: bool = False, show_all: bool = False, interactive: bool = False):
+    all_templates = get_all_templates(extra_dirs)
+
+    if convert:
+        for tmpl in all_templates:
+            if tmpl.path and Path(tmpl.path).exists():
+                workflow = json.loads(Path(tmpl.path).read_text())
+                if "nodes" in workflow:
+                    convert_ui_to_api(workflow)
+                    tmpl.description = (tmpl.description or "") + " [converted to API format]"
+
+    if not show_all:
+        all_templates = [t for t in all_templates if "API" not in t.tags]
+
+    _populate_supported_params(all_templates)
+
+    if format == "json":
+        records = []
+        for t in all_templates:
+            d = asdict(t)
+            d["example_invocation"] = _build_example_invocation(t)
+            records.append(d)
+        console = Console()
+        console.print_json(json.dumps(records))
+    elif interactive:
+        _interactive_select(all_templates)
+    else:
+        _print_table(all_templates)
+
+
+def _interactive_select(templates: list[TemplateInfo]):
+    if not templates:
+        Console().print("No workflow templates found.")
+        return
+
+    import questionary
+
+    choices = []
+    for t in templates:
+        tid = t.template_id or t.name
+        desc = t.description or ""
+        if len(desc) > 60:
+            desc = desc[:57] + "..."
+        params = " ".join(t.supported_params) if t.supported_params else ""
+        label = f"{tid:<40s} {params:<30s} {desc}"
+        choices.append(questionary.Choice(title=label, value=t))
+
+    selected = questionary.select(
+        "Select a workflow template:",
+        choices=choices,
+        use_search_filter=True,
+        use_jk_keys=False,
+    ).ask()
+
+    if selected is None:
+        return
+
+    _print_detail_panel(selected)
+
+
+def _print_detail_panel(tmpl: TemplateInfo):
+    stderr = Console(stderr=True)
+    stdout = Console()
+    lines = []
+    lines.append(f"[bold]Name:[/bold] {tmpl.name}")
+    if tmpl.template_id:
+        lines.append(f"[bold]ID:[/bold] {tmpl.template_id}")
+    if tmpl.description:
+        lines.append(f"[bold]Description:[/bold] {tmpl.description}")
+    if tmpl.tags:
+        lines.append(f"[bold]Tags:[/bold] {', '.join(tmpl.tags)}")
+    if tmpl.bundle:
+        lines.append(f"[bold]Bundle:[/bold] {tmpl.bundle}")
+    if tmpl.supported_params:
+        lines.append(f"[bold]Params:[/bold] --{'  --'.join(tmpl.supported_params)}")
+    if tmpl.path:
+        lines.append(f"[bold]Path:[/bold] {tmpl.path}")
+    stderr.print("\n".join(lines))
+
+    stderr.print()
+    stderr.print("[bold]Run with:[/bold]")
+    stdout.print(_build_example_invocation(tmpl), highlight=False)
+
+
+def _print_table(templates: list[TemplateInfo]):
+    console = Console()
+    if not templates:
+        console.print("No workflow templates found.")
+        return
+    table = Table(show_edge=False, pad_edge=False, box=None, width=max(console.width, 200))
+    table.add_column("ID", no_wrap=True)
+    table.add_column("Name", no_wrap=True)
+    table.add_column("Task", no_wrap=True)
+    table.add_column("Params", no_wrap=True)
+    table.add_column("Description", no_wrap=True, overflow="ellipsis", ratio=1)
+    for t in templates:
+        table.add_row(
+            t.template_id or "",
+            t.name,
+            t.task or "",
+            " ".join(t.supported_params),
+            t.description or "",
+        )
+    console.print(table, soft_wrap=True)
