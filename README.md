@@ -18,13 +18,11 @@ diffusive/
 │   ├── comfyui/                       # Vendored ComfyUI core engine (v0.41.0.1)
 │   └── comfyui-to-python/             # Vendored ComfyUI-to-Python compiler (pre-patched for uv)
 │
-├── docs/                              # Architecture & evolution documentation
-│   ├── architecture_and_evolution.md  # Complete codebase evolution & evaluation trace
-│   ├── comfyui_to_python_walkthrough.md # Detailed guide on Frontend JSON -> Python compilation
-│   ├── implementation_plan.md         # Workspace restructuring plan & checklist
-│   ├── uv_pip_comfy.md                # Reference for uv pip ComfyUI setup
-│   ├── architecture_and_flow.excalidraw
-│   └── inference_ifTalk_execution_flow.excalidraw
+├── docs/                              # Architecture, evolution log, & CLI cheatsheet
+│   ├── ARCHITECTURE.md                # System design, static packages/, & JSON -> Python compiler guide
+│   ├── CHANGELOG_AND_EVALUATION.md    # Chronological evolution log, bug fixes, & workflow traces
+│   ├── COMMAND.txt                    # Quick copy-paste CLI cheatsheet
+│   └── diagrams/                      # Excalidraw architecture & execution flow diagrams
 │
 ├── models/                            # Static model directory tree (unet, text_encoders, vae, etc.)
 ├── custom_nodes/                      # Workflow custom nodes + symlink to packages/comfyui-to-python
@@ -165,4 +163,6 @@ uv run python scripts/inference_qedit.py --help
 
 ## Documentation (`docs/`)
 
-See [docs/architecture_and_evolution.md](file:///home/tmdt-admin/comfy/docs/architecture_and_evolution.md) for the complete architectural evolution, root-cause analysis of upstream ComfyUI fixes, static `packages/` design, and full evaluation trace.
+* **[docs/ARCHITECTURE.md](file:///home/tmdt-admin/comfy/docs/ARCHITECTURE.md)**: System design, static `packages/` architecture, and Frontend JSON → Standalone Python compilation protocol.
+* **[docs/CHANGELOG_AND_EVALUATION.md](file:///home/tmdt-admin/comfy/docs/CHANGELOG_AND_EVALUATION.md)**: Chronological evolution log, root-cause analysis of upstream ComfyUI fixes, and workflow evaluation traces (`qedit.json`, `inference_ifTalk.py`).
+* **[docs/COMMAND.txt](file:///home/tmdt-admin/comfy/docs/COMMAND.txt)**: Copy-paste CLI command cheatsheet for setup, conversion, inference, and testing.

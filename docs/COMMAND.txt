@@ -1,0 +1,102 @@
+================================================================================
+DIFFUSIVE — QUICK COMMAND CHEATSHEET
+================================================================================
+
+1. ENVIRONMENT SETUP (One-Time)
+--------------------------------------------------------------------------------
+# Sync Python environment & install static local packages (packages/comfyui & packages/comfyui-to-python)
+uv sync --inexact
+
+# Install headless Chromium for workflow JSON -> Python compilation
+uv run playwright install chromium
+
+
+2. DOWNLOAD CUSTOM NODES & MODELS
+--------------------------------------------------------------------------------
+# Clone pinned custom nodes in scripts/custom_nodes_links.txt & link static exporter
+./scripts/download_custom_nodes.sh
+
+# Download active model weights in scripts/model_links.txt into ./models/<subfolder>/
+./scripts/download_models.sh
+
+
+3. COMPILE A FRONTEND WORKFLOW JSON -> API JSON & STANDALONE PYTHON SCRIPT
+--------------------------------------------------------------------------------
+# Step 3a: Start headless ComfyUI server (Terminal 1)
+uv run comfyui serve --guess-settings --listen 127.0.0.1 --port 8189
+
+# Step 3b: Convert workflows/qedit.json -> workflows/qedit_api.json + scripts/inference_qedit.py (Terminal 2)
+uv run python scripts/convert.py \
+  --input workflows/qedit.json \
+  --output scripts/inference_qedit.py \
+  --url http://127.0.0.1:8189
+
+# Step 3c: Stop the ComfyUI server in Terminal 1 (Ctrl+C) once conversion completes.
+
+
+4. RUN STANDALONE QWEN-IMAGE WORKFLOW (scripts/inference_qedit.py)
+--------------------------------------------------------------------------------
+# View all CLI flags
+uv run python scripts/inference_qedit.py --help
+
+# Fast dry-run (verifies ComfyUI bootstrap & all 9 required nodes without loading weights)
+uv run python scripts/inference_qedit.py --dry-run
+
+# Full GPU inference (generates image into ./output/qedit_test_00001_.png)
+uv run python scripts/inference_qedit.py \
+  --output_prefix qedit_test \
+  --batch_size 1 \
+  --steps 10 \
+  --cfg 2.0 \
+  --width 1024 \
+  --height 768 \
+  --device cuda:0
+
+# Run with a custom prompt and fixed seed
+uv run python scripts/inference_qedit.py \
+  --positive_prompt "A cinematic portrait of an astronaut holding a glowing lantern, 8k" \
+  --output_prefix custom_qedit \
+  --batch_size 1 \
+  --steps 10 \
+  --seed 42 \
+  --device cuda:0
+
+
+5. RUN STANDALONE WAN2.1 + INFINITETALK WORKFLOW (scripts/inference_ifTalk.py)
+--------------------------------------------------------------------------------
+# View all CLI flags
+uv run python scripts/inference_ifTalk.py --help
+
+# Fast dry-run (checks runtime & node availability without inference)
+uv run python scripts/inference_ifTalk.py --dry-run
+
+# Full V2V / Lip-Sync inference
+uv run python scripts/inference_ifTalk.py \
+  --video input/sample.mp4 \
+  --audio input/sample.wav \
+  --positive_prompt "A person speaking clearly to the camera." \
+  --output_prefix ./output/generated \
+  --steps 4 \
+  --device cuda:0
+
+
+6. POST-PROCESSING & VIDEO COMPARISON UTILITIES
+--------------------------------------------------------------------------------
+# Generate frame-by-frame RGB difference mask between two videos
+uv run python scripts/diff_masks.py --help
+
+# Stack videos side-by-side (Original | Edited | Difference)
+uv run python scripts/stack_video.py \
+  --json-dir output/ \
+  --video-dir input/ \
+  --output-dir output/stacks \
+  --latest 5
+
+
+7. VERIFY & TEST THE PROJECT (Automated Test Suite)
+--------------------------------------------------------------------------------
+# Run all automated tests (verifies static packages/, downloaders, and dry-runs)
+uv run pytest -p no:cacheprovider -v
+
+# Quick one-liner to verify comfy & comfyui_to_python load from local packages/
+uv run python -c "import comfy, comfyui_to_python; print(comfy.__file__); print(comfyui_to_python.__file__)"
